@@ -3,6 +3,7 @@ package com.iflytek.testhandler;
 import android.os.Bundle;
 import android.app.Activity;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
@@ -15,14 +16,19 @@ public class MainActivity extends Activity {
     private HandlerTest2 mHandlerTest2;
     private Handler handler1;
     private Handler handler2;
+
     private Handler handler0;
+
+    private HandlerThread myHandlerThread;
+    private Handler handler3;
+
     private int counter=0;
     private String TAG = "threadinfo";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        init3();
+        init4();
     }
 
     public class myThread extends Thread{
@@ -67,6 +73,41 @@ public class MainActivity extends Activity {
                 Looper.loop();
             }
         }.start();
+    }
+
+    private void init4(){
+        //创建一个线程,线程名字：handler-thread
+        myHandlerThread = new HandlerThread( "handler-thread") ;
+        //开启一个线程
+        myHandlerThread.start();
+        //在这个线程中创建一个handler对象
+        Log.d(TAG, "init4: "+Thread.currentThread().getId());
+        handler3 = new Handler( myHandlerThread.getLooper() ){
+            @Override
+            public void handleMessage(Message msg) {
+                super.handleMessage(msg);
+                //这个方法是运行在 handler-thread 线程中的 ，可以执行耗时操作
+                Log.d(TAG , "消息： " + msg.what + "  线程： " + Thread.currentThread().getId()) ;
+            }
+        };
+
+        //在主线程给handler发送消息
+        handler3.sendEmptyMessage( 1 ) ;
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Log.d(TAG, "new runnable "+Thread.currentThread().getId());
+                //在子线程给handler发送数据
+                handler3.sendEmptyMessage( 2 ) ;
+            }
+        }).start() ;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        myHandlerThread.quit();
     }
 
     private class HandlerTest1 extends Handler {
